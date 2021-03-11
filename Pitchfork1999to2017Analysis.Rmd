@@ -1,0 +1,173 @@
+---
+title: "Pitchfork 1999 to 2017 Reviews Analysis"
+author: "Daniel Rolando Quintanilla Treviño"
+date: "3/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+## Introduction
+  
+In this report we will analyze a dataset containing every review that the music publication Pitchfork has released from January 1999 to December 2017. The objective of this analysis will be to get insights into Pitchfork critics' preferences, as well as the trends in reviews through the years.
+  
+First we create a data frame with the data from the .csv file.
+```{r}
+df <- read.csv("p4kreviews.csv")
+```
+  
+We take a glimpse at the structure of the data frame.
+```{r}
+head(df)
+```
+* The "review" column contains a long paragraph of text extracted from the review. It can be useful to categorize review content, but it is hard to visualize properly in a table.
+  
+We take a look at the structure of the data frame.
+```{r}
+str(df)
+```
+  
+What is the summary of the data?
+```{r}
+summary(df)
+```
+* The mean score of all the reviews is 7.03, and the median is 7.3.
+  
+The date of the review is a string type data instead of date. In order to properly analyze based on the date, we have to change it into the proper format.
+```{r}
+df <- df %>%
+  separate(date, sep=" ", into = c("month", "day", "year")) %>%
+  select(X, album, artist, best, year, month, day, genre, review, score)
+```
+  
+Here is a visualization of the distribution of genres in the reviews.
+```{r}
+df_genres <- df %>%
+  group_by(genre) %>%
+  count(genre, sort = FALSE, name = "reviews")
+
+ggplot(df_genres, aes(x = genre, y = reviews, fill = genre)) + geom_col()
+```
+  
+* We can identify that Rock is by far the most popular genre in Pitchfork reviews, with Electronic music in 2nd place and music without genre and Experimental music in 3rd place. 4th place is Rap and after it is Pop and R&B.
+  
+Here is a visualization of the reviews published by year:
+```{r}
+df_year <- df %>%
+  group_by(year) %>%
+  count(year, sort = FALSE, name = "reviews")
+
+ggplot(df_year, aes(x = year, y = reviews, fill = year)) + geom_col()
+```
+  
+* We can see that the number of reviews by year almost doubled between 2001 and 2002, and the review output has steadily grown since.
+  
+How are all review scores distributed? Let's find out:
+```{r}
+ggplot(df, aes(x = score)) + geom_histogram(bins = 15)
+```
+  
+We can see that the scores have a normal distribution, with most scores being between 7 and 7.5.  
+  
+## Developing questions, getting answers
+  
+Now that we know a bit more about the dataset we are working with, we can take what we learned to ask questions and gain insight. For each question, a graph will be developed to visualize the answer to that question.
+  
+### What are the top 10 most reviewed artists by Pitchfork in the 2010s?
+  
+In order to answer this question, we have to group by year and artist and count each combination. The graph generated will be plotted independently for each year.
+```{r}
+df_top10artistbyyear <- df %>%
+  filter(artist != "Various Artists", year >= 2010 & year <= 2017) %>%
+  group_by(artist) %>%
+  count(artist, sort = TRUE, name = "reviews") %>%
+  head(10)
+
+ggplot(df_top10artistbyyear, aes(x = artist, y = reviews, fill = artist)) + geom_col()
+```
+  
+* The top 10 most reviewed artists in the 2010s were:  
+1. Gucci Mane  
+2. David Bowie  
+3. Future  
+4. Bob Dylan  
+5. Guided by Voices  
+6. Mogwai  
+7. Ty Segall  
+8. Curren$y  
+9. Four Tet  
+10. Thee Oh Sees  
+  
+### How have the medium and median scores changed through the years?
+  
+```{r}
+df_scoresbyyear <- df %>%
+  group_by(year) %>%
+  summarize(
+    meanScore = mean(score),
+    medianScore = median(score)
+  )
+
+ggplot(df_scoresbyyear, aes(x = year, y = meanScore)) + 
+  geom_line(aes(group=1)) + geom_point() + theme_bw()
+```
+  
+* Ever since 2009, the mean score of reviews every year has been increasing. Is Pitchfork going soft?!
+  
+```{r}
+ggplot(df_scoresbyyear, aes(x = year, y = medianScore)) + 
+  geom_line(aes(group=1)) + geom_point() + theme_bw()
+```
+  
+* The median has a harder pattern to decipher. While the mean scores in 2000 and 2002 were the lowest, the lowest median score was 2009. Both graphs indicate that Pitchfork has given better scores overall in the last two years (2016 and 2017). The mean is usually lower than the median, which means the data is skewed to the right, and most review scores are lower than the mean. 
+  
+### What is the average score of a Best New Album vs the average score of a non Best New Album?
+  
+```{r}
+df_AvgBest <- df %>%
+  group_by(best) %>%
+  summarize(
+    meanScore = mean(score)
+  )
+force(df_AvgBest)
+```
+* 1 means Best New Albums and 0 means regular album. The average score for Best New Music is 8.68, while regular music has an average of 6.93.
+  
+### How are scores distributed by genre? Which genre has the highest scores and which genre has the lowest?
+  
+```{r}
+ggplot(df, aes(x = genre, y = score)) + geom_boxplot()
+```
+  
+* Overall, Global music has the highest scores followed by Jazz, while Pop/R&B has the lowest.  
+* Interesingly, Global music and Metal music are the only genres without a 10!
+  
+### How are King Gizzard & The Lizard Wizard review scores distributed? 
+  
+Man, I love King Gizz. In my opinion, the most prolific band of all time after The Beatles. Pitchfork kinda hates them from what I have heard... let's see how their scores are distributed.
+```{r}
+df_KingGizz <- df %>%
+  filter(artist == "King Gizzard & The Lizard Wizard") %>%
+  arrange(desc(year))
+
+ggplot(df_KingGizz, aes(x = artist, y = score)) + geom_boxplot()
+```
+  
+* The median score for King Gizz albums is of about 7.35, with the lower quartile being about 7.20 and the upper quartile being 8. Not great scores and no Best New Music, but it's not bad!
+  
+### What are Pitchfork's scores for the first three Tame Impala albums?
+```{r}
+df_TameImpala <- df %>%
+  filter(artist == "Tame Impala")
+
+ggplot(df_TameImpala, aes(x = album, y = score, fill = album)) + geom_col() + geom_text(aes(label = score), vjust = 1.5, colour = "white") 
+```
+  
+* 2015's Currents is Pitchfork's favorite Tame Impala album with a score of 9.3.  
+* 2012's Lonerism is in second place with a score of 9.0.  
+* 2010's Innerspeaker, the band's debut, has a score of 8.5.  
+* It would seem that Pitchfork likes Tame Impala more and more with each release.
